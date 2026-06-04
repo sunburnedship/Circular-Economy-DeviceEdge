@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circular Economy Simulation — Device Edge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16201d; --ink-soft:#3a4a45; --paper:#f3efe6; --panel:#fbf9f3; --panel-2:#efeadd;
+  --teal:#0f7b6c; --teal-d:#0a564c; --teal-l:#3fa493; --amber:#c1761b; --amber-l:#e3a85a;
+  --red:#b23b3b; --green:#3f8f4f; --slate:#5b6a65; --line:#d7d0c0;
+  --line-2:#c4bba6; --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 24px -12px rgba(20,40,35,.25);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);font-family:'Hanken Grotesk',sans-serif;font-size:15px;line-height:1.5}
+body{background-image:radial-gradient(var(--line) 0.6px,transparent 0.6px);background-size:22px 22px;min-height:100vh}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+h1,h2,h3,.disp{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-.01em}
+button{font-family:inherit;cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+
+/* ===== Top bar ===== */
+.topbar{background:var(--ink);color:#eef3f0;position:sticky;top:0;z-index:50;border-bottom:2px solid var(--teal)}
+.topbar-in{max-width:1180px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:11px;font-family:'Bricolage Grotesque';font-weight:800;font-size:18px;letter-spacing:-.02em}
+.logo .ring{width:26px;height:26px;border:3px solid var(--teal-l);border-right-color:transparent;border-radius:50%;transform:rotate(-30deg)}
+.logo span.small{font-weight:500;font-family:'IBM Plex Mono';font-size:11px;opacity:.7;letter-spacing:.04em;text-transform:uppercase}
+.hud{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hud .chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:5px 11px;display:flex;flex-direction:column;line-height:1.15}
+.hud .chip .k{font-family:'IBM Plex Mono';font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;opacity:.6}
+.hud .chip .v{font-family:'IBM Plex Mono';font-weight:600;font-size:15px}
+.hud .chip .v.good{color:#7fd3a8}.hud .chip .v.bad{color:#f0a3a3}.hud .chip .v.warn{color:#f1c178}
+
+/* ===== Nav ===== */
+.nav{display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px;margin:20px 0;flex-wrap:wrap;box-shadow:var(--shadow)}
+.nav button{border:none;background:transparent;color:var(--slate);padding:9px 15px;border-radius:7px;font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:7px;transition:.15s}
+.nav button .n{font-family:'IBM Plex Mono';font-size:10px;background:var(--panel-2);border-radius:4px;padding:1px 5px;color:var(--ink-soft)}
+.nav button:hover{background:var(--panel-2);color:var(--ink)}
+.nav button.active{background:var(--ink);color:#fff}
+.nav button.active .n{background:var(--teal);color:#fff}
+.nav button:disabled{opacity:.38;cursor:not-allowed}
+
+.view{display:none;animation:fade .35s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ===== Cards ===== */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:22px;box-shadow:var(--shadow);margin-bottom:18px}
+.card h2{font-size:21px;font-weight:700;margin-bottom:4px}
+.card .sub{color:var(--slate);font-size:13.5px;margin-bottom:16px}
+.eyebrow{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal-d);font-weight:600;margin-bottom:6px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:820px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* ===== Buttons ===== */
+.btn{background:var(--teal);color:#fff;border:none;padding:12px 22px;border-radius:9px;font-weight:700;font-size:14.5px;transition:.15s;box-shadow:0 2px 0 var(--teal-d)}
+.btn:hover{background:var(--teal-d);transform:translateY(-1px)}
+.btn:active{transform:translateY(1px);box-shadow:none}
+.btn:disabled{background:#a9b3af;box-shadow:0 2px 0 #8a948f;cursor:not-allowed;transform:none}
+.btn.ghost{background:transparent;color:var(--teal-d);border:1.5px solid var(--line-2);box-shadow:none}
+.btn.ghost:hover{background:var(--panel-2)}
+.btn.amber{background:var(--amber);box-shadow:0 2px 0 #99590f}.btn.amber:hover{background:#a9650f}
+.btn.lg{padding:15px 30px;font-size:16px}
+
+/* ===== Metric tiles ===== */
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:11px}
+@media(max-width:1080px){.tiles{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:680px){.tiles{grid-template-columns:1fr 1fr}}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;position:relative;overflow:hidden}
+.tile .lab{font-family:'IBM Plex Mono';font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--slate)}
+.tile .big{font-family:'Bricolage Grotesque';font-weight:800;font-size:28px;margin-top:4px;line-height:1}
+.tile .big .u{font-size:13px;font-weight:600;color:var(--slate)}
+.tile .delta{font-family:'IBM Plex Mono';font-size:11px;margin-top:6px;font-weight:600}
+.tile .delta.up{color:var(--green)}.tile .delta.down{color:var(--red)}.tile .delta.flat{color:var(--slate)}
+.tile .target{font-size:10.5px;color:var(--slate);margin-top:3px}
+.tile .accent{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--teal)}
+.tile.t-mci .accent{background:var(--teal)}.tile.t-profit .accent{background:var(--amber)}
+.tile.t-co2 .accent{background:#6b8f86}.tile.t-rev .accent{background:var(--teal-l)}
+.tile.t-energy .accent{background:#5b7d9d}
+
+/* progress ring */
+.ring-wrap{display:flex;align-items:center;gap:18px}
+svg.ring text{font-family:'IBM Plex Mono'}
+
+/* ===== Initiatives ===== */
+.stage-tabs{display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap}
+.stage-tabs button{border:1.5px solid var(--line-2);background:var(--panel);padding:8px 14px;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink-soft)}
+.stage-tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+.init{border:1.5px solid var(--line);border-radius:11px;padding:14px 15px;margin-bottom:11px;transition:.15s;background:var(--panel)}
+.init:hover{border-color:var(--line-2)}
+.init.sel{border-color:var(--teal);background:linear-gradient(0deg,rgba(15,123,108,.05),rgba(15,123,108,.05))}
+.init.locked{opacity:.55}
+.init-top{display:flex;align-items:flex-start;gap:13px}
+.init-cb{width:22px;height:22px;border:2px solid var(--line-2);border-radius:6px;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:.15s;background:#fff}
+.init.sel .init-cb{background:var(--teal);border-color:var(--teal)}
+.init-cb svg{opacity:0;transition:.15s}.init.sel .init-cb svg{opacity:1}
+.init-body{flex:1}
+.init-name{font-weight:700;font-size:15px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.init-desc{color:var(--slate);font-size:13px;margin-top:3px}
+.init-ref{font-family:'IBM Plex Mono';font-size:10.5px;color:var(--teal-d);margin-top:6px;opacity:.85}
+.tag{font-family:'IBM Plex Mono';font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.04em}
+.tag.cost{background:#f0e6d4;color:#8a5a16}
+.tag.active{background:var(--teal);color:#fff}
+.tag.compliance{background:#dceae2;color:var(--teal-d)}
+.tag.h{background:#cfe9df;color:#0a564c}.tag.m{background:#e3ecd3;color:#5a6e2e}.tag.l{background:#ece6d6;color:#7a6f54}
+.tag.pos{background:#d6ecd9;color:#2f6e3c}.tag.neg{background:#f1dada;color:#9a3030}.tag.neu{background:#e6e2d6;color:#5b6a65}
+.impact-reveal{display:none;gap:6px;margin-top:9px;flex-wrap:wrap}
+.reveal-on .impact-reveal{display:flex}
+
+.budget-row{display:flex;align-items:center;gap:14px;padding:13px 0;border-top:1px solid var(--line)}
+.budget-row .lab{flex:1}
+.budget-row .lab b{font-size:14.5px}.budget-row .lab .d{font-size:12px;color:var(--slate)}
+.budget-row input[type=range]{flex:1.4;accent-color:var(--teal)}
+.budget-row .val{font-family:'IBM Plex Mono';font-weight:600;width:78px;text-align:right;font-size:15px}
+
+.pickbar{position:sticky;bottom:0;background:var(--ink);color:#fff;border-radius:12px 12px 0 0;padding:14px 20px;display:flex;align-items:center;gap:18px;margin-top:10px;box-shadow:0 -8px 24px -16px rgba(0,0,0,.5);flex-wrap:wrap}
+.pickbar .count{font-family:'Bricolage Grotesque';font-weight:800;font-size:22px}
+.pickbar .count.full{color:#7fd3a8}
+.pickbar .info{font-size:12.5px;opacity:.8;line-height:1.3}
+.pickbar .spend{font-family:'IBM Plex Mono';font-size:13px;margin-left:auto;text-align:right}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-family:'IBM Plex Mono';font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);font-weight:600}
+td{font-family:'IBM Plex Mono'}
+td:first-child{font-family:'Hanken Grotesk';font-weight:600}
+tr.tot td{border-top:2px solid var(--line-2);font-weight:700}
+.scroll{overflow-x:auto}
+
+/* bars */
+.bars{display:flex;align-items:flex-end;gap:10px;height:170px;padding:10px 6px 0;border-bottom:2px solid var(--line-2)}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
+.bar-stack{width:60%;max-width:46px;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;min-height:2px}
+.bar-seg{width:100%}
+.bar-lab{font-family:'IBM Plex Mono';font-size:11px;color:var(--slate)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.line-chart{width:100%;height:200px}
+
+.callout{border-radius:10px;padding:14px 16px;font-size:14px;margin-bottom:14px;border:1px solid}
+.callout.win{background:#e1f0e6;border-color:#9cc9ab;color:#1f5b32}
+.callout.partial{background:#f6efda;border-color:#d8c388;color:#7a5a14}
+.callout.fail{background:#f4e0df;border-color:#d0a0a0;color:#8a2f2f}
+.callout b{font-weight:700}
+.callout.note{background:var(--panel-2);border-color:var(--line);color:var(--ink-soft)}
+
+.refs{font-size:12.5px;line-height:1.7;color:var(--ink-soft)}
+.refs li{margin-bottom:7px;list-style:none;padding-left:20px;position:relative}
+.refs li::before{content:"▸";position:absolute;left:0;color:var(--teal)}
+
+.intro-hero{background:linear-gradient(135deg,var(--ink),var(--teal-d));color:#fff;border-radius:16px;padding:36px 32px;margin-bottom:18px;position:relative;overflow:hidden}
+.intro-hero::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border:30px solid rgba(255,255,255,.05);border-radius:50%}
+.intro-hero .eyebrow{color:var(--teal-l)}
+.intro-hero h1{font-size:36px;font-weight:800;line-height:1.05;max-width:680px;margin-bottom:12px}
+.intro-hero p{max-width:620px;opacity:.92;font-size:15px}
+.goal-card{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:11px;background:var(--panel);border:1px solid var(--line)}
+.goal-card .num{font-family:'Bricolage Grotesque';font-weight:800;font-size:26px;color:var(--teal);line-height:1}
+.fac{background:var(--panel-2);border:1px dashed var(--line-2);border-radius:11px;padding:16px;margin-bottom:16px;display:none}
+body.facilitator-mode .fac{display:block}
+.fac h3{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.fac label{display:flex;align-items:center;gap:8px;font-size:13.5px;margin:7px 0;cursor:pointer}
+.gloss dt{font-weight:700;margin-top:11px}
+.gloss dd{color:var(--ink-soft);font-size:13.5px;margin-left:0}
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,22,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--panel);border-radius:15px;padding:28px;max-width:520px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);animation:pop .3s ease}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+.modal h2{font-size:22px;margin-bottom:8px}
+.modal .ico{font-size:34px;margin-bottom:6px}
+.small{font-size:12px;color:var(--slate)}
+.divider{height:1px;background:var(--line);margin:18px 0}
+.kbd{font-family:'IBM Plex Mono';background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:12px}
+
+/* Certificate of Completion */
+.cert-block{background:#f9f5e8;border:1.5px solid var(--teal);border-radius:11px;padding:14px 16px;margin:16px 0;position:relative;overflow:hidden}
+.cert-block::after{content:"";position:absolute;right:-30px;top:-30px;width:90px;height:90px;border:8px solid rgba(15,123,108,.12);border-radius:50%}
+.cert-title{font-weight:700;font-size:14px;color:var(--teal-d);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.cert-issued{font-size:13.5px;color:var(--ink);margin-bottom:12px;line-height:1.45}
+.cert-issued b{color:var(--teal-d)}
+.cert-issued .mono{font-family:'IBM Plex Mono';font-size:11.5px;color:var(--slate)}
+.cert-row{display:flex;gap:10px;flex-wrap:wrap}
+.cert-row button{white-space:nowrap}
+.cert-mini{padding:4px 9px;font-size:12px;font-weight:600;border:1px solid var(--line-2);background:#fff;border-radius:6px;color:var(--teal-d);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.cert-mini:hover{background:var(--panel-2);border-color:var(--teal)}
+
+/* Dashboard export — temporarily forces white backgrounds for the PNG export */
+body.exporting{background:#ffffff !important}
+body.exporting .card,
+body.exporting .tile{background:#ffffff !important; box-shadow:none !important}
+body.exporting .scroll{background:#fafafa !important}
+
+/* Student name entry */
+.name-card{border:2px solid var(--teal);background:linear-gradient(180deg,#fbf9f3,#f0eadd)}
+.name-card.is-set{border-color:var(--line);background:var(--panel)}
+.name-row{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.name-row input{flex:1;min-width:180px;border:1.5px solid var(--line-2);border-radius:8px;padding:11px 14px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
+.name-row input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,123,108,.15)}
+.name-row button{white-space:nowrap;min-width:180px}
+.name-preview{margin-top:12px;font-size:13px;color:var(--slate);min-height:1.4em}
+.name-preview b{color:var(--teal-d)}
+.name-preview.ok{color:var(--teal-d);font-weight:600;font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="logo"><div class="ring"></div><div>DEVICE&nbsp;EDGE<br><span class="small">Circular Economy Simulation</span></div></div>
+    <div class="hud" id="hud"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="nav" id="nav">
+    <button data-v="brief" class="active"><span class="n">i</span> Briefing</button>
+    <button data-v="dash"><span class="n">1</span> Dashboard</button>
+    <button data-v="decide"><span class="n">2</span> Decisions</button>
+    <button data-v="runs"><span class="n">3</span> Runs</button>
+    <button data-v="gloss"><span class="n">?</span> Glossary &amp; Sources</button>
+  </nav>
+
+  <!-- ============ BRIEFING ============ -->
+  <section class="view active" id="v-brief">
+    <div class="intro-hero">
+      <div class="eyebrow">Engineering Product Design · Circular Economy</div>
+      <h1>You run Helix Mobile, a mid-size smartphone manufacturer. You have five years.</h1>
+      <p>Each year you choose initiatives across <b>Design&nbsp;&amp;&nbsp;Materials</b>, <b>Manufacturing&nbsp;&amp;&nbsp;Supply&nbsp;Chain</b>, and <b>Use,&nbsp;Repair&nbsp;&amp;&nbsp;Recovery</b>, and set your R&amp;D and capability budgets. Drive the company's <b>Material Circularity Indicator</b> upward while keeping the business profitable — in a market where regulators, rivals, and physics keep moving the target.</p>
+    </div>
+
+    <div class="card name-card" id="nameCard">
+      <div class="eyebrow">First, who's running this company?</div>
+      <h2 style="font-size:19px;margin-bottom:6px">Enter your name to begin.</h2>
+      <p class="small" style="margin-bottom:14px">Your run will be tagged with your name on the dashboard, in CSV exports and on your Certificate of Completion — so your instructor can identify it.</p>
+      <div class="name-row">
+        <input type="text" id="nameFirst" placeholder="First name" autocomplete="given-name">
+        <input type="text" id="nameLast" placeholder="Last name" autocomplete="family-name">
+        <button class="btn" id="nameSetBtn" onclick="setStudentName()">Set name &amp; begin →</button>
+      </div>
+      <div id="namePreview" class="name-preview"></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <div class="eyebrow">Your two goals</div>
+        <div class="grid" style="gap:11px">
+          <div class="goal-card"><div class="num">①</div><div><b>Reach an MCI of 0.65</b><br><span class="small">The Material Circularity Indicator (Ellen MacArthur Foundation / Granta) summarises how circular your product really is, on a 0.1–1.0 scale. You start near <b id="mci0">0.18</b>.</span></div></div>
+          <div class="goal-card"><div class="num">②</div><div><b>Maintain profitability</b><br><span class="small">Year-5 operating profit must be at least your Year-0 baseline of <b>$420M</b>. Circularity that bankrupts the company teaches the wrong lesson.</span></div></div>
+        </div>
+        <div class="callout note" style="margin-top:14px">⚠ <b>It is not meant to be easy.</b> Most strategies hit one goal at the expense of the other. Expect to play several times: impact levels are hidden, the industry-average lifespan rises each year, and not every initiative does what its marketing suggests — so standing still or chasing surface-level wins both mean falling behind.</div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">The central tension</div>
+        <h2 style="font-size:18px">Longer-lasting phones sell fewer phones.</h2>
+        <p class="small" style="margin:8px 0 12px">The single biggest circularity lever is <b>product lifespan</b> — but every extra year of life slows replacement demand and erodes hardware revenue. Roughly <b>80% of a smartphone's lifecycle carbon is locked in at manufacturing</b>, so making fewer, longer-lived devices is exactly what cuts emissions — and exactly what threatens the traditional sales model.</p>
+        <p class="small">The way through is the same lesson the fashion version teaches: <b>growth has to come from new circular business models</b> — trade-in and refurbishment, repair services, battery programs, and device-as-a-service — not from shipping more units.</p>
+        <div style="margin-top:14px"><button class="btn lg" onclick="startYear1()">Start Year 1 →</button> <button class="btn ghost" onclick="go('dash')">See baseline dashboard</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">How a year works</div>
+      <div class="grid g4">
+        <div><b>1 · Decide</b><p class="small">Pick up to 4 initiatives and set R&amp;D + capability spend. Choices are permanent and compound.</p></div>
+        <div><b>2 · Resolve</b><p class="small">The model recomputes your four circularity drivers, your MCI, your P&amp;L and your emissions.</p></div>
+        <div><b>3 · Review</b><p class="small">Read the dashboards. Diagnose what moved and what didn't — the game won't tell you directly.</p></div>
+        <div><b>4 · Repeat ×5</b><p class="small">After Year 5, regulators check your compliance and you receive your verdict.</p></div>
+      </div>
+    </div>
+
+    <div class="card fac" id="facPanel">
+      <h3>⚙ Facilitator settings <span class="small" style="font-weight:400">(optional — for instructors)</span></h3>
+      <div class="grid g3">
+        <label><input type="checkbox" id="facReveal"> Reveal initiative impact ratings (MCI / waste / profit) — use in debrief, not first play</label>
+        <label><input type="checkbox" id="facEPR" checked> Enable Extended Producer Responsibility (EPR) fees — eco-modulated by circularity</label>
+        <label><input type="checkbox" id="facHard"> Hard mode — industry-average lifespan rises faster</label>
+      </div>
+      <p class="small" style="margin-top:8px">All model parameters live in a clearly-labelled <span class="kbd">PARAMS</span> block at the top of this file's script, so you can recalibrate difficulty, costs, or the win threshold for your cohort. The same engine reskins to a satellite-data-center scenario (swap the product mass, lifespan units, and recovery levers).</p>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="view" id="v-dash">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px">
+        <div><div class="eyebrow" id="dashYearLabel">Baseline · Year 0</div><h2>Performance Dashboard</h2><div class="sub">Helix Mobile — flagship + mid-range smartphone line</div></div>
+        <div class="ring-wrap" id="mciRingWrap"></div>
+      </div>
+      <div class="tiles" id="tiles" style="margin-top:8px"></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <div class="eyebrow">Circularity drivers</div>
+        <h2 style="font-size:18px;margin-bottom:2px">What the MCI is made of</h2>
+        <div class="sub">The four levers behind your score. Lifespan (utility) has the strongest effect.</div>
+        <div id="driverTable"></div>
+        <div class="callout note" style="margin-top:14px" id="mciExplain"></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Business performance</div>
+        <h2 style="font-size:18px;margin-bottom:2px">Revenue mix &amp; operating profit</h2>
+        <div class="sub">Watch hardware revenue fall as devices last longer — and new circular revenue rise to replace it.</div>
+        <div id="revChart"></div>
+      </div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <div class="eyebrow">Emissions</div>
+        <h2 style="font-size:18px;margin-bottom:2px">Lifecycle CO₂e (kt / year)</h2>
+        <div class="sub">~80% of footprint is manufacturing — fewer, longer-lived, refurbished devices cut it most.</div>
+        <div id="co2Chart"></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Trajectory</div>
+        <h2 style="font-size:18px;margin-bottom:2px">MCI vs. operating profit</h2>
+        <div class="sub">The two goals, year by year. The dashed line is the MCI target.</div>
+        <div id="trajChart"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Income statement</div>
+      <h2 style="font-size:18px;margin-bottom:10px">P&amp;L summary ($M)</h2>
+      <div class="scroll"><div id="pnlTable"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ DECISIONS ============ -->
+  <section class="view" id="v-decide">
+    <div class="card">
+      <div class="eyebrow" id="decYearLabel">Year 1 decisions</div>
+      <h2>Choose your initiatives</h2>
+      <div class="sub">Select up to <b>4</b> from across the value chain. Already-active initiatives are locked in and keep working. Set your R&amp;D and capability budgets below.</div>
+      <div class="stage-tabs" id="stageTabs"></div>
+      <div id="initList"></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Annual investments</div>
+      <div class="budget-row">
+        <div class="lab"><b>Research &amp; Development</b><div class="d">Advances recovery technology. Reach <span class="mono" id="rdGoal"></span> cumulative to trigger a materials breakthrough (+recycling efficiency &amp; recycled-content ceiling).</div></div>
+        <input type="range" id="rdRange" min="0" max="400" step="20" value="0">
+        <div class="val"><span id="rdVal">$0</span>M</div>
+      </div>
+      <div class="budget-row">
+        <div class="lab"><b>Workforce capability &amp; supplier training</b><div class="d">Without it, initiatives under-deliver. Full effect ≈ <span class="mono">$120M</span>/yr; spending beyond that has diminishing returns.</div></div>
+        <input type="range" id="trRange" min="0" max="200" step="20" value="0">
+        <div class="val"><span id="trVal">$0</span>M</div>
+      </div>
+      <div class="budget-row" style="border-bottom:none">
+        <div class="lab"><b>Cumulative R&amp;D to date</b><div class="d">Breakthrough status shown in the top bar.</div></div>
+        <div style="flex:1.4"></div>
+        <div class="val"><span id="cumRdVal" class="mono">$0</span>M</div>
+      </div>
+    </div>
+
+    <div class="pickbar">
+      <div class="count" id="pickCount">0 / 4</div>
+      <div class="info">initiatives selected this year<br><span id="pickHint">Spread picks across stages — Use &amp; Recovery and Design move the MCI most.</span></div>
+      <div class="spend" id="pickSpend"></div>
+      <button class="btn amber lg" id="submitBtn" onclick="submitYear()">Submit Year &amp; Advance →</button>
+    </div>
+  </section>
+
+  <!-- ============ RUNS ============ -->
+  <section class="view" id="v-runs">
+    <div class="card">
+      <div class="eyebrow">Run history (this session)</div>
+      <h2>Compare your playthroughs</h2>
+      <div class="sub">Each completed run is logged here so you can test different strategies. Refreshing the page clears the log — export to keep results.</div>
+      <div id="runsTable"></div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="newRun()">↻ Start a new run</button>
+        <button class="btn ghost" onclick="exportCSV()">⤓ Export current run (CSV)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GLOSSARY ============ -->
+  <section class="view" id="v-gloss">
+    <div class="grid g2">
+      <div class="card">
+        <div class="eyebrow">Glossary</div>
+        <h2 style="font-size:19px">Key terms</h2>
+        <dl class="gloss" id="glossList"></dl>
+      </div>
+      <div class="card">
+        <div class="eyebrow">The MCI engine</div>
+        <h2 style="font-size:19px">How your score is computed</h2>
+        <p class="small" style="margin:8px 0">This simulation uses the actual Material Circularity Indicator method, evaluated each year for one representative device:</p>
+        <div class="card" style="background:var(--panel-2);box-shadow:none;margin:0 0 12px">
+          <div class="mono" style="font-size:13px;line-height:1.9">
+            V = M·(1 − F<sub>R</sub> − F<sub>U</sub>)<br>
+            W = M·(1−C) + ½·[ W<sub>F</sub> + W<sub>C</sub> ]<br>
+            LFI = (V + W) / 2M<br>
+            X = L / L<sub>avg</sub> &nbsp;(utility)<br>
+            <b>MCI = max( 0 , 1 − LFI · 0.9/X )</b>
+          </div>
+        </div>
+        <p class="small">where F<sub>R</sub>=recycled input %, F<sub>U</sub>=reused/remanufactured %, C=collection rate, E=recycling efficiency (inside W), L=actual device lifespan, L<sub>avg</sub>=industry-average lifespan. A fully linear product with average utility scores 0.1; a fully circular one scores 1.0.</p>
+        <div class="divider"></div>
+        <div class="eyebrow">Sources the parameters are grounded in</div>
+        <ul class="refs" id="refList" style="margin-top:8px"></ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
+
+<script>
+/* =================================================================
+   PARAMS — facilitators can tune difficulty here
+   ================================================================= */
+const PARAMS = {
+  years: 5,
+  mciTarget: 0.65,
+  profitTargetM: 420,          // Year-5 operating profit must be >= this
+  rdBreakthroughM: 100,        // cumulative R&D ($M) to trigger breakthrough
+  lavStart: 2.7,               // industry-avg lifespan (years)
+  lavDrift: 0.08,              // +per year (rivals & regulation raise the bar)
+  lavDriftHard: 0.18,          // hard mode
+  baseUnitsM: 6.0,             // baseline annual unit sales (millions)
+  asp: 450,                    // average selling price ($)
+  baseUnitCost: 300,           // baseline cost of goods per unit ($)
+  baseServicesM: 300,          // baseline services/accessory revenue ($M)
+  svcMargin: 0.60,
+  fixedOpexM: 620,             // baseline fixed operating cost ($M)
+  marketGrowth: 0.02,          // annual market growth
+  perUnitMfgCO2: 55,           // kg CO2e embodied per device (manufacturing-dominated)
+  perUnitMfgEnergyKWh: 250,    // primary energy per device, manufacturing-dominated
+  perUnitUseEnergyKWh: 5,      // kWh/year for charging an active device
+  renewableShare0: 0.30,       // baseline share of energy from renewable sources
+  eprPerUnit: 3.0,             // $/unit EPR fee (eco-modulated by MCI)
+  depreciationYrs: 8,
+  // baseline circularity drivers (one representative device)
+  FR0: 0.08, FU0: 0.02, C0: 0.18, E0: 0.45, L0: 2.70,
+  // erosion if capability under-funded / no action
+  decayL: 0.03, decayC: 0.01, decayE: 0.006, decayFR: 0.005,
+  // ceilings
+  capFR: 0.50, capFU: 0.20, capC: 0.85, capE: 0.75, capL: 6.5,
+  breakthroughE: 0.10, breakthroughFRcap: 0.08,
+  lifeExp: 0.48,               // cannibalization damping: units ~ (L0/L)^lifeExp
+  svcFleet: 0.20,              // services revenue grows with a longer-lived installed base
+  circGrowth: 0.035            // recirculating fleet grows mature circular revenue each year
+};
+
+/* =================================================================
+   INITIATIVE CATALOG
+   deltas are FULL effect (reached after a 1-yr ramp); $M unless noted.
+   ================================================================= */
+const STAGES = [
+  {id:'design', name:'Design & Materials'},
+  {id:'mfg',    name:'Manufacturing & Supply Chain'},
+  {id:'use',    name:'Use, Repair & Recovery'}
+];
+
+const INITS = [
+/* ---------- DESIGN & MATERIALS ---------- */
+{id:'D1',stage:'design',name:'Modular architecture',desc:'User-replaceable battery, screen and camera modules; standard fasteners instead of adhesives.',ref:'Fairphone modular design; EU Ecodesign 2023/1670 disassembly rules',
+ capex:160,opex:15, dE:.06,dL:.6,dFU:.03,dUnitCost:10,shareGain:.02,dCO2:-2, mci:'h',waste:'m',profit:'neg'},
+{id:'D2',stage:'design',name:'7-year OS & security support',desc:'Extend software support well beyond the 5-year EU minimum so devices stay usable far longer.',ref:'EU 5-yr update minimum (2025); Fairphone 8+ yrs; Google/Samsung 7 yrs',
+ capex:40,opex:20, dL:1.0,shareGain:.03,dUnitCost:2,dCO2:0, mci:'h',waste:'l',profit:'neu'},
+{id:'D3',stage:'design',name:'High recycled-material content',desc:'Recycled aluminium, cobalt and rare-earth magnets in place of virgin feedstock.',ref:'Apple recycled-materials program; GEM 2024: <1% of rare-earth demand met by recycling',
+ capex:60,opex:0, dFR:.18,dUnitCost:5,dCO2:-6,dMfgEnergy:-25, mci:'m',waste:'l',profit:'neg'},
+{id:'D4',stage:'design',name:'Design for disassembly',desc:'Cut adhesives and material diversity so end-of-life devices yield clean, high-value material streams.',ref:'EU Ecodesign disassembly requirements; design-for-recycling literature',
+ capex:70,opex:5, dE:.10,dL:.3,dUnitCost:4,dCO2:-1, mci:'h',waste:'l',profit:'neg'},
+{id:'D5',stage:'design',name:'Long-life battery (1000+ cycles)',desc:'Battery retaining ≥85% capacity after 1000 cycles — the #1 reason phones get retired.',ref:'EU rule: ≥800 cycles at ≥80% capacity; battery is leading replacement driver',
+ capex:50,opex:0, dL:.8,dUnitCost:6,shareGain:.02,dCO2:0, mci:'h',waste:'l',profit:'neu'},
+{id:'D6',stage:'design',name:'Mono-material, labelled plastics',desc:'Single-polymer housings and molded-in resin codes that recyclers can actually sort.',ref:'Design-for-recycling best practice',
+ capex:30,opex:0, dE:.05,dFR:.03,dUnitCost:1,dCO2:-1,dMfgEnergy:-3, mci:'m',waste:'l',profit:'neu'},
+{id:'D7',stage:'design',name:'Reduce critical-mineral dependence',desc:'Re-engineer magnets and circuitry to cut reliance on scarce, hard-to-recover rare earths.',ref:'GEM 2024: rare-earth recovery ~1%; EU Critical Raw Materials Act',
+ capex:90,opex:8, dE:.04,dUnitCost:8,dCO2:-2,dMfgEnergy:-8, mci:'m',waste:'l',profit:'neg'},
+{id:'D8',stage:'design',name:'Ruggedized build (45-drop, IP68)',desc:'Survives the EU 45-drop test and dust/water — fewer failures, longer real-world life.',ref:'EU durability test (45 drops); IP-rating durability',
+ capex:45,opex:0, dL:.5,dUnitCost:5,shareGain:.01,dCO2:0, mci:'m',waste:'l',profit:'pos'},
+{id:'D9',stage:'design',name:'Fiber packaging, no in-box charger',desc:'Recycled-fiber packaging and dropped charger — cheap, popular, cuts shipping waste.',ref:'Apple/Samsung charger removal; packaging waste reduction',
+ capex:10,opex:-8, dUnitCost:-3,dCO2:-2, mci:'l',waste:'m',profit:'pos'},
+{id:'D10',stage:'design',name:'Ultra-thin "signature" redesign',desc:'A sleeker, thinner flagship — a form-factor refresh that revitalises the lineup.',ref:'Industry research links flagship form-factor refreshes to short-term ASP and replacement-cycle uplift.',
+ capex:120,opex:0, dL:-.3,dE:-.03,dUnitCost:4,shareGain:.02,dCO2:0, mci:'l',waste:'l',profit:'neg'},
+
+/* ---------- MANUFACTURING & SUPPLY CHAIN ---------- */
+{id:'M1',stage:'mfg',name:'Renewable energy across operations',desc:'On-site renewables plus a supplier clean-energy mandate for the carbon-heavy fab steps.',ref:'~80% of footprint is manufacturing; Apple supplier clean-energy program',
+ capex:120,opex:10, dCO2:-22,dUnitCost:0,dRenewable:.45, mci:'l',waste:'l',profit:'pos'},
+{id:'M2',stage:'mfg',name:'Closed-loop production scrap recovery',desc:'Capture and reprocess manufacturing offcuts back into feedstock.',ref:'Closed-loop manufacturing; material-cost savings',
+ capex:60,opex:-15, dFR:.06,dE:.03,dUnitCost:-3,dCO2:-3,dMfgEnergy:-15, mci:'m',waste:'h',profit:'pos'},
+{id:'M3',stage:'mfg',name:'Digital Product Passport & traceability',desc:'Per-device passport documenting materials and repair history; unlocks compliant recycled-content claims.',ref:'EU ESPR Digital Product Passport',
+ capex:40,opex:8, dFR:.02,dCO2:0, mci:'l',waste:'l',profit:'neu',enables:'compliance'},
+{id:'M4',stage:'mfg',name:'Water stewardship & PFAS phase-out',desc:'Cut process water and eliminate persistent "forever chemicals" from the supply chain.',ref:'Mining/processing is the dominant ecological impact (Fairphone Nature Report)',
+ capex:50,opex:8, dUnitCost:2,dCO2:-1, mci:'l',waste:'m',profit:'neg'},
+{id:'M5',stage:'mfg',name:'Responsible sourcing (ASI / Fairtrade)',desc:'Certified-clean aluminium and conflict-free, Fairtrade gold.',ref:'Aluminium Stewardship Initiative; Fairtrade gold; conflict-minerals rules',
+ capex:30,opex:12, shareGain:.01,dCO2:-1,dRenewable:.05, mci:'l',waste:'l',profit:'neg'},
+{id:'M6',stage:'mfg',name:'Low-carbon logistics',desc:'Sea freight over air, plus regional final assembly to shorten supply lines.',ref:'Transport ≈ 8–11% of supply-chain emissions',
+ capex:20,opex:-8, dCO2:-8,dUnitCost:-1,dMfgEnergy:-5, mci:'l',waste:'l',profit:'pos'},
+{id:'M7',stage:'mfg',name:'Lean / JIT — cut overproduction',desc:'Demand-pull production to slash component waste and unsold inventory.',ref:'Lean manufacturing; overproduction waste',
+ capex:40,opex:-18, dCO2:-3,dUnitCost:-2,dMfgEnergy:-10, mci:'l',waste:'h',profit:'pos'},
+{id:'M8',stage:'mfg',name:'Automated remanufacturing line',desc:'Robotic disassembly to recover modules and high-purity materials at scale.',ref:"Apple's 'Daisy' disassembly robot; remanufacturing economics",
+ capex:140,opex:15, dE:.08,dFU:.04,dCO2:-2, mci:'m',waste:'m',profit:'neg'},
+{id:'M9',stage:'mfg',name:'Slow the release cadence',desc:'Fewer forced model refreshes — keep platforms in market longer instead of annual churn.',ref:'Shorter product cycles cited as key e-waste driver (GEM 2024)',
+ capex:0,opex:-15, dL:.3,shareGain:-.015,dCO2:-2, mci:'m',waste:'m',profit:'neu'},
+
+/* ---------- USE, REPAIR & RECOVERY ---------- */
+{id:'R1',stage:'use',name:'Trade-in & take-back program',desc:'Pay customers to return old devices; feedstock for refurb and recycling.',ref:'GEM 2024: only 22.3% of e-waste formally collected; growing trade-in market',
+ capex:50,opex:25, dC:.20,dFU:.03,newRev:200,circMargin:.40,dCO2:-3, mci:'h',waste:'m',profit:'pos'},
+{id:'R2',stage:'use',name:'Certified refurbished channel',desc:'Sell professionally refurbished returns as a first-party product line.',ref:'251M+ used smartphones shipped in 2021; refurb market expanding',
+ capex:60,opex:30, dFU:.05,dC:.08,newRev:420,circMargin:.44,shareGain:-.025,dCO2:-5, mci:'h',waste:'h',profit:'pos'},
+{id:'R3',stage:'use',name:'Authorized repair network + cheap parts',desc:'Fast, affordable repairs with genuine parts so devices keep living.',ref:'EU: spare parts in 5–10 working days for 7 years',
+ capex:70,opex:25, dL:.7,newRev:170,circMargin:.50,dCO2:-2, mci:'h',waste:'m',profit:'pos'},
+{id:'R4',stage:'use',name:'Self-repair program',desc:'Parts, manuals and tools direct to consumers and independent shops.',ref:'EU right-to-repair; Apple Self Service Repair',
+ capex:30,opex:8, dL:.4,newRev:80,circMargin:.54,dCO2:-1, mci:'h',waste:'l',profit:'pos'},
+{id:'R5',stage:'use',name:'Device-as-a-Service (leasing)',desc:'Subscription phones you own and recirculate — guaranteed returns, but capital-heavy and slow to pay off.',ref:'Product-as-a-Service models (Ellen MacArthur Foundation)',
+ capex:200,opex:30, dC:.25,dFU:.06,dL:.5,newRev:480,circMargin:.36,leaseShift:.12,ramp2:true,dCO2:-4, mci:'h',waste:'h',profit:'neg'},
+{id:'R6',stage:'use',name:'Fast, low-cost battery replacement',desc:'Cheap same-day battery swaps — directly attacks the top retirement cause.',ref:'Battery degradation = leading replacement driver',
+ capex:40,opex:15, dL:.9,newRev:130,circMargin:.52,dCO2:-2, mci:'h',waste:'m',profit:'pos'},
+{id:'R7',stage:'use',name:'Retail drop-off & mail-back recycling',desc:'Convenient collection bins and prepaid mailers to lift recovery.',ref:'Collection infrastructure; GEM 2024 recovery gap',
+ capex:35,opex:20, dC:.12,dCO2:-1, mci:'m',waste:'l',profit:'neg'},
+{id:'R8',stage:'use',name:'Carrier buy-back partnerships',desc:'Co-funded buy-back at the point of upgrade through carrier partners.',ref:'Carrier upgrade/buy-back channels',
+ capex:20,opex:8, dC:.10,newRev:95,circMargin:.35,dCO2:-1, mci:'m',waste:'l',profit:'pos'},
+{id:'R9',stage:'use',name:'Verified repairability & LCA disclosure',desc:'Publish the EU repairability score and a third-party-verified lifecycle assessment.',ref:'EU energy label (A–G repairability), 2025; required for EU market access',
+ capex:20,opex:8, dCO2:0, mci:'l',waste:'l',profit:'neu',enables:'compliance'},
+{id:'R10',stage:'use',name:'"EcoEdition" green marketing push',desc:'A premium sustainability-themed campaign and SKU that positions the brand on environmental leadership.',ref:'Consumer research indicates "green" framing supports premium pricing and brand loyalty in mobile.',
+ capex:60,opex:0, shareGain:.03,dCO2:0, mci:'l',waste:'l',profit:'neg',flag:'greenwash'}
+];
+
+const GLOSSARY = [
+ ['Material Circularity Indicator (MCI)','A 0.1–1.0 summary of how circular a product is, combining recycled inputs, reuse, collection, recycling efficiency and lifespan. 1.0 = fully circular; 0.1 = fully linear at average utility.'],
+ ['Recycled inputs (F_R)','Share of a device\'s material mass that comes from recycled feedstock instead of virgin extraction.'],
+ ['Reuse / remanufacture (F_U)','Share sourced from reused components — the highest-value form of circulation.'],
+ ['Collection rate (C)','Fraction of end-of-life devices actually recovered rather than landfilled, incinerated or hoarded.'],
+ ['Recycling efficiency (E)','Yield of the recycling process — how much usable material is recovered from what is collected.'],
+ ['Utility (X = L / L_avg)','Lifespan relative to the industry average. Doubling a product\'s life roughly halves its annual linear material flow.'],
+ ['Linear Flow Index (LFI)','Proportion of material moving in a take-make-dispose line; the core of the MCI.'],
+ ['Operating profit','Revenue minus operating costs, before tax and interest. Your second, non-negotiable goal.'],
+ ['EPR fee','Extended Producer Responsibility charge to fund collection; here it is eco-modulated — more circular products pay less.'],
+ ['Device-as-a-Service','Selling access to a phone (subscription) rather than the phone itself, so the maker retains ownership and recovers it.']
+];
+
+const REFS = [
+ 'UNITAR / ITU — The Global E-waste Monitor 2024 (62 Mt generated, 22.3% formally collected; rare-earth recovery ~1%; Europe 42.8%).',
+ 'European Commission — Ecodesign Regulation (EU) 2023/1670 & Energy Labelling (EU) 2023/1669 for smartphones/tablets, in force 20 June 2025 (5-yr software support, 7-yr spare parts, 800-cycle battery, A–G repairability label).',
+ 'Ellen MacArthur Foundation & Granta Design — Circularity Indicators: Methodology (Material Circularity Indicator).',
+ 'Fairphone — Life-cycle assessments and Nature Report (~75–78% of impact in manufacturing/mining).',
+ 'Cordella et al. / EU JRC — Material-efficiency studies: extending lifespan 2→3 yrs cuts carbon footprint ~23–30%.',
+ 'Apple & Samsung environmental reports — recycled-content targets, supplier clean energy, robotic disassembly (Daisy).'
+];
+
+/* =================================================================
+   STATE
+   ================================================================= */
+let S, RUNS=[], runCounter=0;
+let studentName='', studentFirst='', studentLast='';
+
+function setStudentName(){
+  const fi=document.getElementById('nameFirst');
+  const li=document.getElementById('nameLast');
+  const first=(fi.value||'').trim().replace(/\s+/g,' ');
+  const last =(li.value||'').trim().replace(/\s+/g,' ');
+  if(!first||!last){
+    const pv=document.getElementById('namePreview');
+    pv.className='name-preview';
+    pv.innerHTML='<span style="color:var(--red)">Please enter both your first and last name.</span>';
+    return;
+  }
+  studentFirst=first; studentLast=last; studentName=first+' '+last;
+  const card=document.getElementById('nameCard');
+  card.classList.add('is-set');
+  const pv=document.getElementById('namePreview');
+  pv.className='name-preview ok';
+  pv.innerHTML='✓ Your company is now <b>Helix Mobile — '+esc(studentName)+'</b>. Head to <b>Decisions</b> to begin Year 1.';
+  document.getElementById('nameSetBtn').textContent='Update name';
+  // pre-fill if cert input is open later
+  renderHUD();
+  toast('Welcome, '+studentFirst+'. Helix Mobile is yours.');
+}
+
+function freshState(){
+  return {
+    year:0, finished:false,
+    active:{}, picks:[], rd:0, tr:0, cumRd:0, breakthrough:false,
+    lav:PARAMS.lavStart,
+    FR:PARAMS.FR0,FU:PARAMS.FU0,C:PARAMS.C0,E:PARAMS.E0,L:PARAMS.L0,
+    history:[],
+    leaseShift:0,
+    stageView:'design'
+  };
+}
+function settings(){return {
+  reveal:document.getElementById('facReveal').checked,
+  epr:document.getElementById('facEPR').checked,
+  hard:document.getElementById('facHard').checked
+};}
+
+/* ---- compute one baseline/year snapshot from current drivers ---- */
+function computeSnapshot(yr, drivers, biz){
+  const {FR,FU,C,E,L,lav}=drivers;
+  const M=1;
+  const V=M*(1-FR-FU);
+  const W0=M*(1-C);
+  const WF=FR>0? M*FR*(1-E)/Math.max(E,0.01):0;
+  const WC=M*C*(1-E);
+  const W=W0+(WF+WC)/2;
+  const LFI=(V+W)/(2*M);
+  const X=L/lav;
+  let mci=1-LFI*(0.9/X);
+  mci=Math.max(0,Math.min(1,mci));
+  const pctMci=(mci-0.1)/0.9;
+  return {yr,mci,pctMci:Math.max(0,pctMci),FR,FU,C,E,L,lav,X,LFI,...biz};
+}
+
+/* ---- recompute everything for the current year ---- */
+function resolveYear(){
+  const set=settings();
+  // 1. commit picks
+  S.picks.forEach(id=>{ if(!S.active[id]) S.active[id]={since:S.year}; });
+  S.picks=[];
+  // 2. R&D
+  S.cumRd+=S.rd;
+  if(!S.breakthrough && S.cumRd>=PARAMS.rdBreakthroughM){ S.breakthrough=true; queueModal('breakthrough'); }
+  // 3. capability effectiveness multiplier (saturating ~120M)
+  const trEff=0.55+0.45*(1-Math.exp(-S.tr/70));   // 0.55 at $0 → ~1.0 near $120M+
+  // 4. industry average lifespan drifts up
+  S.lav+=(set.hard?PARAMS.lavDriftHard:PARAMS.lavDrift);
+  // 5. rebuild drivers from baseline + active initiative effects
+  let FR=PARAMS.FR0,FU=PARAMS.FU0,C=PARAMS.C0,E=PARAMS.E0,L=PARAMS.L0;
+  let leaseShift=0,shareGain=0,unitCostAdj=0,co2Adj=0;
+  let mfgEnergyAdj=0,renewableAdj=0;
+  let initOpex=0,initDep=0,newRevMature=0,newRevGross=0;
+  let compliant=false,greenwash=false;
+  for(const id in S.active){
+    const it=INITS.find(x=>x.id===id);
+    const age=S.year-S.active[id].since; // 0 in selection year, then grows
+    const ramp=it.ramp2 ? Math.min(1,(age+1)/3) : Math.min(1,(age+0.7));
+    const k=ramp*trEff;
+    FR+=(it.dFR||0)*k; FU+=(it.dFU||0)*k; C+=(it.dC||0)*k; E+=(it.dE||0)*k; L+=(it.dL||0)*k;
+    leaseShift+=(it.leaseShift||0)*ramp;
+    shareGain+=(it.shareGain||0)*ramp;
+    unitCostAdj+=(it.dUnitCost||0);
+    co2Adj+=(it.dCO2||0);
+    mfgEnergyAdj+=(it.dMfgEnergy||0)*ramp;
+    renewableAdj+=(it.dRenewable||0)*ramp;
+    initOpex+=(it.opex||0);
+    initDep+=(it.capex||0)/PARAMS.depreciationYrs;
+    if(it.newRev){ newRevMature+=it.newRev; newRevGross+=it.newRev*ramp*it.circMargin; }
+    if(it.enables==='compliance') compliant=true;
+    if(it.flag==='greenwash') greenwash=true;
+  }
+  // breakthrough bonus
+  if(S.breakthrough){ E+=PARAMS.breakthroughE; FR+=PARAMS.breakthroughFRcap; }
+  // erosion when capability under-funded (pulls toward decay if trEff low)
+  const erode=(1-trEff)*1.0;
+  L-=PARAMS.decayL*erode; C-=PARAMS.decayC*erode; E-=PARAMS.decayE*erode; FR-=PARAMS.decayFR*erode;
+  // clamp
+  FR=clamp(FR,0,PARAMS.capFR+(S.breakthrough?PARAMS.breakthroughFRcap:0));
+  FU=clamp(FU,0,PARAMS.capFU); C=clamp(C,0,PARAMS.capC); E=clamp(E,0,PARAMS.capE); L=clamp(L,1.0,PARAMS.capL);
+  S.FR=FR;S.FU=FU;S.C=C;S.E=E;S.L=L;S.leaseShift=leaseShift;
+
+  // 6. business model
+  const g=Math.pow(1+PARAMS.marketGrowth,S.year);
+  const lifeFactor=Math.pow(PARAMS.L0/L,PARAMS.lifeExp);  // longer life → fewer replacement sales (damped)
+  let units=PARAMS.baseUnitsM*g*lifeFactor*(1+shareGain)*(1-leaseShift);
+  units=Math.max(0.2,units);
+  const unitCost=PARAMS.baseUnitCost+unitCostAdj;
+  const hwRevM=units*PARAMS.asp;                       // $M  (units in millions × price in $ = $M)
+  const hwCostM=units*unitCost;                        // $M
+  const hwGrossM=hwRevM-hwCostM;
+  // services scale with installed-base proxy — a longer-lived fleet means more active devices
+  const fleet=1+PARAMS.svcFleet*(L/PARAMS.L0-1);
+  const svcRevM=PARAMS.baseServicesM*fleet*Math.pow(1.015,S.year);
+  const svcGrossM=svcRevM*PARAMS.svcMargin;
+  const circRevM=newRevMature;                         // mature circular-revenue display value
+  const circGrossM=newRevGross*(1+PARAMS.circGrowth*S.year); // recirculating fleet compounds over time
+  // costs
+  const fixedOpexM=PARAMS.fixedOpexM*Math.pow(1.01,S.year);
+  const takebackM=Math.max(0,(C-PARAMS.C0))*150;
+  // EPR fee is eco-modulated: more circular products pay less (uses prior-year MCI as the modulator)
+  const eprM=set.epr ? units*PARAMS.eprPerUnit*(1-0.5*lastMci()) : 0;
+  const opTotalM=fixedOpexM+initOpex+S.rd+S.tr+initDep+takebackM+eprM;
+  let profitM=hwGrossM+svcGrossM+circGrossM-opTotalM;
+
+  // emissions (kt/yr): 1M units × 55 kg = 55 kt, manufacturing-dominated
+  const perUnit=Math.max(8,PARAMS.perUnitMfgCO2+co2Adj);
+  const co2=units*perUnit;
+
+  // energy (GWh/yr): manufacturing + active-fleet use phase
+  const perUnitEnergy=Math.max(40,PARAMS.perUnitMfgEnergyKWh+mfgEnergyAdj);
+  const activeFleet=units*L;                                   // M devices × yrs ≈ active fleet in M devices
+  const energyMfgGWh=units*perUnitEnergy;                       // units(M) × kWh = GWh
+  const energyUseGWh=activeFleet*PARAMS.perUnitUseEnergyKWh;    // M × kWh = GWh
+  const energyGWh=energyMfgGWh+energyUseGWh;
+  const renewableShare=clamp(PARAMS.renewableShare0+renewableAdj,0,1);
+
+  const snap=computeSnapshot(S.year,{FR,FU,C,E,L,lav:S.lav},{
+    units, hwRevM, hwCostM, hwGrossM, svcRevM, svcGrossM, circRevM, circGrossM,
+    fixedOpexM, initOpex, rd:S.rd, tr:S.tr, initDep, takebackM, eprM, profitM,
+    co2, energyGWh, energyMfgGWh, energyUseGWh, renewableShare,
+    unitCost, compliant, greenwash, trEff
+  });
+  S.history.push(snap);
+}
+function lastMci(){ return S.history.length? S.history[S.history.length-1].mci : 0.18; }
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+/* baseline (year 0) */
+function pushBaseline(){
+  const set=settings();
+  const g=1, life=PARAMS.L0/PARAMS.L0;
+  const units=PARAMS.baseUnitsM;
+  const hwRevM=units*PARAMS.asp, hwCostM=units*PARAMS.baseUnitCost, hwGrossM=hwRevM-hwCostM;
+  const svcRevM=PARAMS.baseServicesM, svcGrossM=svcRevM*PARAMS.svcMargin;
+  const fixedOpexM=PARAMS.fixedOpexM;
+  let eprM=set.epr? units*PARAMS.eprPerUnit*(1-0.5*0.182):0;
+  const profitM=hwGrossM+svcGrossM-fixedOpexM-eprM;
+  const co2=units*PARAMS.perUnitMfgCO2;
+  const energyMfgGWh=units*PARAMS.perUnitMfgEnergyKWh;
+  const energyUseGWh=units*PARAMS.L0*PARAMS.perUnitUseEnergyKWh;
+  const energyGWh=energyMfgGWh+energyUseGWh;
+  const renewableShare=PARAMS.renewableShare0;
+  const snap=computeSnapshot(0,{FR:PARAMS.FR0,FU:PARAMS.FU0,C:PARAMS.C0,E:PARAMS.E0,L:PARAMS.L0,lav:PARAMS.lavStart},{
+    units,hwRevM,hwCostM,hwGrossM,svcRevM,svcGrossM,circRevM:0,circGrossM:0,
+    fixedOpexM,initOpex:0,rd:0,tr:0,initDep:0,takebackM:0,eprM,profitM,co2,
+    energyGWh,energyMfgGWh,energyUseGWh,renewableShare,
+    unitCost:PARAMS.baseUnitCost,compliant:false,greenwash:false,trEff:1
+  });
+  S.history.push(snap);
+}
+
+/* =================================================================
+   FLOW
+   ================================================================= */
+function submitYear(){
+  if(!studentName){ toast('Enter your first and last name on the Briefing screen first.'); go('brief'); return; }
+  if(S.picks.length===0 && !confirm('Submit this year with no new initiatives selected?')) return;
+  S.year++;
+  resolveYear();
+  renderAll();
+  if(S.year>=PARAMS.years){ finalize(); }
+  else { go('dash'); toast('Year '+S.year+' resolved — review your dashboard.'); }
+}
+function startYear1(){
+  if(!studentName){
+    toast('Please enter your name first so your instructor can identify this run.');
+    const card=document.getElementById('nameCard');
+    if(card){ card.scrollIntoView({behavior:'smooth',block:'center'}); }
+    const fi=document.getElementById('nameFirst');
+    if(fi){ setTimeout(()=>fi.focus(), 400); }
+    return;
+  }
+  go('decide');
+}
+
+function finalize(){
+  S.finished=true;
+  const last=S.history[S.history.length-1];
+  const set=settings();
+  // EU compliance check (greenwashing fine analog)
+  let penalty=0, complianceMsg='';
+  const everCompliant=Object.keys(S.active).some(id=>{const it=INITS.find(x=>x.id===id);return it.enables==='compliance';});
+  const usedGreenwash=Object.keys(S.active).some(id=>{const it=INITS.find(x=>x.id===id);return it.flag==='greenwash';});
+  if(!everCompliant){
+    penalty=250;
+    complianceMsg='Regulators audited your sustainability claims and found no verified repairability score or LCA on file. You face a €250M penalty and restricted EU market access.';
+  } else if(usedGreenwash){
+    penalty=120;
+    complianceMsg='Your "EcoEdition" campaign drew a Green Claims Directive challenge; verified disclosure limited the damage to a €120M settlement.';
+  }
+  last.profitM-=penalty; last.penalty=penalty;
+  // verdict
+  const won=last.mci>=PARAMS.mciTarget;
+  const profitOk=last.profitM>=PARAMS.profitTargetM;
+  let verdict,vclass;
+  if(won&&profitOk){verdict='success';vclass='win';}
+  else if(!won&&profitOk){verdict='profit_only';vclass='partial';}
+  else if(won&&!profitOk){verdict='mci_only';vclass='partial';}
+  else {verdict='neither';vclass='fail';}
+  last.verdict=verdict;
+  // log run
+  runCounter++;
+  RUNS.push({n:runCounter, student:studentName, mci:last.mci, profit:last.profitM, co2:last.co2,
+    units:last.units, energyGWh:last.energyGWh, renewable:last.renewableShare,
+    verdict, picks:Object.keys(S.active).length, breakthrough:S.breakthrough,
+    compliant: penalty===0, penalty, date: new Date(),
+    runId: generateRunId(last, runCounter)});
+  renderAll();
+  queueModal('verdict',{last,verdict,vclass,complianceMsg,penalty});
+}
+
+function newRun(){
+  S=freshState(); pushBaseline(); renderAll(); go('brief');
+  toast('New run started. Good luck.');
+}
+
+/* =================================================================
+   RENDER
+   ================================================================= */
+function renderAll(){ renderHUD(); renderDash(); renderDecide(); renderRuns(); }
+
+function fmtM(v){ const s=v<0?'-':''; v=Math.abs(v); return s+'$'+(v>=1000?(v/1000).toFixed(2)+'B':Math.round(v)+'M'); }
+function fmtEnergyVal(g){ return g>=1000 ? (g/1000).toFixed(2) : Math.round(g); }
+function fmtEnergyUnit(g){ return g>=1000 ? 'TWh' : 'GWh'; }
+function pct(v){return (v*100).toFixed(0)+'%';}
+
+function renderHUD(){
+  const h=document.getElementById('hud');
+  const last=S.history[S.history.length-1]||{};
+  const base=S.history[0]||{};
+  const mci=last.mci||0, profit=last.profitM||0;
+  const mciCls=mci>=PARAMS.mciTarget?'good':(mci>=0.45?'warn':'bad');
+  const pCls=profit>=PARAMS.profitTargetM?'good':'bad';
+  const studentChip=studentName
+    ? `<div class="chip"><div class="k">Run by</div><div class="v">${esc(studentName)}</div></div>`
+    : `<div class="chip" style="border-color:rgba(241,193,120,.4)"><div class="k" style="color:#f1c178">Run by</div><div class="v warn">— set name —</div></div>`;
+  h.innerHTML=studentChip+`
+   <div class="chip"><div class="k">Year</div><div class="v">${S.finished?'Final':S.year} / ${PARAMS.years}</div></div>
+   <div class="chip"><div class="k">MCI</div><div class="v ${mciCls}">${mci.toFixed(3)}</div></div>
+   <div class="chip"><div class="k">Op. profit</div><div class="v ${pCls}">${fmtM(profit)}</div></div>
+   <div class="chip"><div class="k">CO₂e</div><div class="v">${Math.round(last.co2||0)} kt</div></div>
+   <div class="chip"><div class="k">Energy</div><div class="v">${fmtEnergyVal(last.energyGWh||0)} ${fmtEnergyUnit(last.energyGWh||0)}</div></div>
+   <div class="chip"><div class="k">R&D break.</div><div class="v ${S.breakthrough?'good':''}">${S.breakthrough?'✓':'—'}</div></div>`;
+}
+
+function ring(mci){
+  const r=46,c=2*Math.PI*r, tgt=PARAMS.mciTarget;
+  const frac=clamp((mci-0.1)/0.9,0,1);
+  const col=mci>=tgt?'var(--teal)':(mci>=.45?'var(--amber)':'var(--red)');
+  return `<svg class="ring" width="118" height="118" viewBox="0 0 118 118">
+   <circle cx="59" cy="59" r="${r}" fill="none" stroke="var(--line)" stroke-width="11"/>
+   <circle cx="59" cy="59" r="${r}" fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round"
+     stroke-dasharray="${c}" stroke-dashoffset="${c*(1-frac)}" transform="rotate(-90 59 59)"/>
+   <text x="59" y="54" text-anchor="middle" font-size="26" font-weight="700" fill="var(--ink)">${mci.toFixed(2)}</text>
+   <text x="59" y="73" text-anchor="middle" font-size="10" fill="var(--slate)">MCI · tgt ${tgt}</text>
+  </svg>`;
+}
+
+function renderDash(){
+  const last=S.history[S.history.length-1];
+  const prev=S.history[S.history.length-2];
+  const base=S.history[0];
+  document.getElementById('dashYearLabel').textContent=(S.year===0?'Baseline · Year 0':(S.finished?'Final results · Year '+S.year:'After Year '+S.year));
+  document.getElementById('mciRingWrap').innerHTML=ring(last.mci);
+
+  // tiles — invert=true flips the up/down polarity for metrics where lower is better (CO2, energy)
+  const dTile=(cls,lab,val,unit,delta,deltaUnit,target,invert)=>{
+    let dc='flat',ds='—';
+    if(delta!==null){
+      const goodWay = invert ? (delta<0?'up':delta>0?'down':'flat') : (delta>0?'up':delta<0?'down':'flat');
+      dc = goodWay;
+      ds=(delta>0?'▲ ':delta<0?'▼ ':'')+ (deltaUnit==='%'? Math.abs(delta*100).toFixed(0)+'%': Math.abs(delta).toFixed(deltaUnit==='M'?0:2))+(deltaUnit==='M'?'M':'');
+      if(delta===0)ds='no change';
+    }
+    return `<div class="tile ${cls}"><div class="accent"></div><div class="lab">${lab}</div>
+      <div class="big">${val}<span class="u">${unit||''}</span></div>
+      ${delta!==null?`<div class="delta ${dc}">${ds} vs last yr</div>`:''}
+      ${target?`<div class="target">${target}</div>`:''}</div>`;
+  };
+  document.getElementById('tiles').innerHTML=
+    dTile('t-mci','Material Circularity',last.mci.toFixed(3),'', prev?last.mci-prev.mci:null,'pt','Target ≥ '+PARAMS.mciTarget+' · '+pct(last.pctMci)+' circular')+
+    dTile('t-profit','Operating profit','$'+(last.profitM/1000).toFixed(2),'B', prev?last.profitM-prev.profitM:null,'M','Must stay ≥ $'+PARAMS.profitTargetM+'M')+
+    dTile('t-rev','Units shipped',last.units.toFixed(2),'M', prev?last.units-prev.units:null,'pt','ASP $'+PARAMS.asp+' · cost $'+Math.round(last.unitCost))+
+    dTile('t-co2','Lifecycle CO₂e',Math.round(last.co2),'kt', prev?last.co2-prev.co2:null,'pt', base?pct((last.co2-base.co2)/base.co2)+' vs baseline':'', /*invert*/true)+
+    dTile('t-energy','Energy use',fmtEnergyVal(last.energyGWh),fmtEnergyUnit(last.energyGWh), prev?last.energyGWh-prev.energyGWh:null,'pt', 'Renewable share '+Math.round((last.renewableShare||0)*100)+'%', /*invert*/true);
+
+  // driver table
+  const dr=(name,sym,v,fmt,note)=>`<tr><td>${name} <span class="small mono">${sym}</span></td><td>${fmt(v)}</td><td class="small" style="text-align:left;color:var(--slate)">${note}</td></tr>`;
+  document.getElementById('driverTable').innerHTML=`<div class="scroll"><table>
+    <tr><th>Driver</th><th>Value</th><th style="text-align:left">Effect on MCI</th></tr>
+    ${dr('Recycled inputs','F_R',last.FR,pct,'Lowers virgin material V')}
+    ${dr('Reuse / remfg.','F_U',last.FU,pct,'Highest-value loop')}
+    ${dr('Collection rate','C',last.C,pct,'Less landfill waste')}
+    ${dr('Recycling efficiency','E',last.E,pct,'More recovered per unit collected')}
+    ${dr('Device lifespan','L',last.L,v=>v.toFixed(1)+' yr','Strongest lever (utility)')}
+    ${dr('Industry avg life','L_avg',last.lav,v=>v.toFixed(1)+' yr','Rises yearly — moving target')}
+  </table></div>`;
+  document.getElementById('mciExplain').innerHTML=
+    `Utility X = L / L<sub>avg</sub> = <b class="mono">${(last.L/last.lav).toFixed(2)}</b>. Your linear-flow index is <b class="mono">${last.LFI.toFixed(2)}</b>. `+
+    (last.mci>=PARAMS.mciTarget?'You\'ve cleared the circularity target — now protect profit.':'Lifespan and collection are usually the fastest ways to move this number.');
+
+  // charts
+  renderRevChart(); renderCO2Chart(); renderTraj(); renderPnl();
+}
+
+function renderRevChart(){
+  const h=S.history;
+  const totals=h.map(s=>s.hwRevM+s.svcRevM+s.circRevM);
+  const max=Math.max(...totals,1)*1.05;
+  const H=140; // px — drawable bar height (less than .bars height so the year label fits)
+  const cols=h.map((s,i)=>{
+    const totalH=Math.max(2,totals[i]/max*H);
+    const seg=(v,c)=>v>0?`<div class="bar-seg" style="flex:${v};background:${c}"></div>`:'';
+    // column-reverse on .bar-stack means the FIRST child sits at the bottom — put hardware first
+    return `<div class="bar-col">
+      <div class="bar-stack" style="height:${totalH}px">
+        ${seg(s.hwRevM,'var(--teal-d)')}${seg(s.svcRevM,'var(--teal-l)')}${seg(s.circRevM,'var(--amber)')}
+      </div>
+      <div class="bar-lab">Y${s.yr}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('revChart').innerHTML=`<div class="bars">${cols}</div>
+   <div class="legend"><span><i style="background:var(--teal-d)"></i>Hardware</span><span><i style="background:var(--teal-l)"></i>Services</span><span><i style="background:var(--amber)"></i>New circular revenue</span></div>`;
+}
+function renderCO2Chart(){
+  const h=S.history; const max=Math.max(...h.map(s=>s.co2),1)*1.05; const H=140;
+  const cols=h.map(s=>{
+    const barH=Math.max(2,s.co2/max*H);
+    return `<div class="bar-col"><div class="bar-stack" style="height:${barH}px;background:#6b8f86"></div><div class="bar-lab">Y${s.yr}</div></div>`;
+  }).join('');
+  document.getElementById('co2Chart').innerHTML=`<div class="bars">${cols}</div>
+   <div class="legend"><span><i style="background:#6b8f86"></i>Manufacturing-dominated lifecycle CO₂e (kt)</span></div>`;
+}
+function renderTraj(){
+  const h=S.history; const W=520,H=200,pad=34;
+  const xs=i=>pad+i*(W-pad*1.4)/Math.max(1,PARAMS.years);
+  const mY=v=>H-pad-(clamp(v,0,1))*(H-pad*1.7);
+  const pmax=Math.max(...h.map(s=>s.profitM),PARAMS.profitTargetM)*1.1, pmin=Math.min(0,...h.map(s=>s.profitM));
+  const pY=v=>H-pad-((v-pmin)/(pmax-pmin))*(H-pad*1.7);
+  const mPath=h.map((s,i)=>(i?'L':'M')+xs(i)+' '+mY(s.mci)).join(' ');
+  const pPath=h.map((s,i)=>(i?'L':'M')+xs(i)+' '+pY(s.profitM)).join(' ');
+  const tgtY=mY(PARAMS.mciTarget);
+  document.getElementById('trajChart').innerHTML=`<svg class="line-chart" viewBox="0 0 ${W} ${H}">
+    <line x1="${pad}" y1="${tgtY}" x2="${W-pad*0.4}" y2="${tgtY}" stroke="var(--teal)" stroke-dasharray="4 4" stroke-width="1.4"/>
+    <text x="${W-pad*0.4}" y="${tgtY-5}" text-anchor="end" font-size="10" fill="var(--teal-d)" font-family="IBM Plex Mono">MCI target ${PARAMS.mciTarget}</text>
+    <path d="${pPath}" fill="none" stroke="var(--amber)" stroke-width="2.4"/>
+    <path d="${mPath}" fill="none" stroke="var(--teal-d)" stroke-width="2.4"/>
+    ${h.map((s,i)=>`<circle cx="${xs(i)}" cy="${mY(s.mci)}" r="3.5" fill="var(--teal-d)"/><circle cx="${xs(i)}" cy="${pY(s.profitM)}" r="3.5" fill="var(--amber)"/><text x="${xs(i)}" y="${H-12}" text-anchor="middle" font-size="10" fill="var(--slate)" font-family="IBM Plex Mono">Y${s.yr}</text>`).join('')}
+   </svg>
+   <div class="legend"><span><i style="background:var(--teal-d)"></i>MCI</span><span><i style="background:var(--amber)"></i>Operating profit</span></div>`;
+}
+function renderPnl(){
+  const h=S.history;
+  const rows=[
+    ['Hardware revenue','hwRevM'],['Services revenue','svcRevM'],['New circular revenue','circRevM'],
+    ['— Hardware cost','hwCostM',true],['— Fixed opex','fixedOpexM',true],['— Initiative opex','initOpex',true],
+    ['— R&D spend','rd',true],['— Capability spend','tr',true],['— Depreciation','initDep',true],
+    ['— Take-back/logistics','takebackM',true],['— EPR fees','eprM',true]
+  ];
+  let html='<table><tr><th>$M</th>'+h.map(s=>`<th>Y${s.yr}</th>`).join('')+'</tr>';
+  rows.forEach(([lab,key,neg])=>{
+    html+=`<tr><td>${lab}</td>`+h.map(s=>`<td>${neg?'(':''}${Math.round(s[key]||0)}${neg?')':''}</td>`).join('')+'</tr>';
+  });
+  html+=`<tr class="tot"><td>Operating profit</td>`+h.map(s=>`<td style="color:${s.profitM>=PARAMS.profitTargetM?'var(--green)':'var(--red)'}">${Math.round(s.profitM)}</td>`).join('')+'</tr>';
+  if(h.some(s=>s.penalty)) html+=`<tr><td class="small">(incl. compliance penalty)</td>`+h.map(s=>`<td class="small">${s.penalty?'-'+s.penalty:''}</td>`).join('')+'</tr>';
+  html+='</table>';
+  document.getElementById('pnlTable').innerHTML=html;
+}
+
+/* ---- decisions ---- */
+function renderDecide(){
+  const yr=S.year+1;
+  document.getElementById('decYearLabel').textContent=S.finished?'Game complete — start a new run from the Runs tab':'Year '+yr+' decisions';
+  // stage tabs
+  document.getElementById('stageTabs').innerHTML=STAGES.map(st=>`<button class="${S.stageView===st.id?'active':''}" onclick="setStage('${st.id}')">${st.name}</button>`).join('');
+  // list
+  const reveal=settings().reveal;
+  document.body.classList.toggle('reveal-on',reveal);
+  const list=INITS.filter(i=>i.stage===S.stageView);
+  document.getElementById('initList').innerHTML=list.map(it=>{
+    const active=!!S.active[it.id];
+    const sel=S.picks.includes(it.id);
+    const cls=active?'init locked':(sel?'init sel':'init');
+    const capTag=`<span class="tag cost">capex ${it.capex} · opex ${it.opex>=0?'+':''}${it.opex}/yr</span>`;
+    const compTag=it.enables==='compliance'?'<span class="tag compliance">compliance</span>':'';
+    const activeTag=active?`<span class="tag active">active since Y${S.active[it.id].since+1}</span>`:'';
+    const rev=it.newRev?`<span class="tag pos">+circular revenue</span>`:'';
+    const impacts=`<div class="impact-reveal">
+       <span class="tag ${it.mci}">MCI ${it.mci.toUpperCase()}</span>
+       <span class="tag ${it.waste}">waste ${it.waste.toUpperCase()}</span>
+       <span class="tag ${it.profit}">profit ${it.profit==='pos'?'+':it.profit==='neg'?'−':'~'}</span></div>`;
+    return `<div class="${cls}" onclick="togglePick('${it.id}')">
+      <div class="init-top">
+        <div class="init-cb"><svg width="13" height="13" viewBox="0 0 13 13"><path d="M2 7l3 3 6-7" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="init-body">
+          <div class="init-name">${it.name} ${activeTag}${compTag}${rev}</div>
+          <div class="init-desc">${it.desc}</div>
+          <div class="init-ref">${it.ref}</div>
+          ${impacts}
+        </div>
+        <div style="text-align:right">${capTag}</div>
+      </div></div>`;
+  }).join('');
+  // budgets
+  document.getElementById('rdRange').value=S.rd; document.getElementById('rdVal').textContent='$'+S.rd;
+  document.getElementById('trRange').value=S.tr; document.getElementById('trVal').textContent='$'+S.tr;
+  document.getElementById('cumRdVal').textContent='$'+S.cumRd;
+  document.getElementById('rdGoal').textContent='$'+PARAMS.rdBreakthroughM+'M';
+  // pickbar
+  const c=document.getElementById('pickCount'); c.textContent=S.picks.length+' / 4'; c.className='count'+(S.picks.length===4?' full':'');
+  let spend=S.rd+S.tr; S.picks.forEach(id=>{const it=INITS.find(x=>x.id===id);spend+=it.capex/PARAMS.depreciationYrs+Math.max(0,it.opex);});
+  document.getElementById('pickSpend').innerHTML=`approx. annual cost of new picks + budgets<br><b style="font-size:15px">~$${Math.round(spend)}M this year</b>`;
+  document.getElementById('submitBtn').disabled=S.finished;
+}
+function setStage(id){S.stageView=id;renderDecide();}
+function togglePick(id){
+  if(S.finished||S.active[id])return;
+  const i=S.picks.indexOf(id);
+  if(i>=0)S.picks.splice(i,1);
+  else{ if(S.picks.length>=4){toast('You can pick at most 4 initiatives per year.');return;} S.picks.push(id); }
+  renderDecide();
+}
+
+/* ---- runs ---- */
+function renderRuns(){
+  const el=document.getElementById('runsTable');
+  if(RUNS.length===0){ el.innerHTML='<p class="small">No completed runs yet. Finish a 5-year game and it will appear here for comparison.</p>'; return; }
+  const vlabel={success:'✅ Both goals',profit_only:'◐ Profit only',mci_only:'◐ Circular only',neither:'✕ Missed both'};
+  el.innerHTML='<div class="scroll"><table><tr><th>Run</th><th style="text-align:left">Student</th><th>Final MCI</th><th>Op. profit</th><th>CO₂e (kt)</th><th>Energy</th><th>Units (M)</th><th>Init.</th><th>R&D</th><th style="text-align:left">Verdict</th><th>Certificate</th></tr>'+
+   RUNS.map((r,i)=>`<tr><td>#${r.n}</td>
+    <td style="text-align:left">${r.student?esc(r.student):'<span style="color:var(--slate)">—</span>'}</td>
+    <td style="color:${r.mci>=PARAMS.mciTarget?'var(--green)':'var(--red)'}">${r.mci.toFixed(3)}</td>
+    <td style="color:${r.profit>=PARAMS.profitTargetM?'var(--green)':'var(--red)'}">${Math.round(r.profit)}</td>
+    <td>${Math.round(r.co2)}</td>
+    <td>${fmtEnergyVal(r.energyGWh||0)}${' '+fmtEnergyUnit(r.energyGWh||0)}</td>
+    <td>${r.units.toFixed(2)}</td><td>${r.picks}</td><td>${r.breakthrough?'✓':'—'}</td>
+    <td style="text-align:left">${vlabel[r.verdict]}</td>
+    <td><button class="cert-mini" onclick="downloadCertificate(${i})">⤓ Cert</button></td></tr>`).join('')+'</table></div>';
+}
+function exportCSV(){
+  const h=S.history; if(!h.length)return;
+  const cols=['yr','mci','pctMci','FR','FU','C','E','L','lav','units','hwRevM','svcRevM','circRevM','profitM','co2','energyGWh','renewableShare'];
+  let csv=cols.join(',')+'\n'+h.map(s=>cols.map(c=>typeof s[c]==='number'?s[c].toFixed(3):s[c]).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a');
+  const safe=(studentName||'run').replace(/[^a-zA-Z0-9_-]/g,'_');
+  a.href=URL.createObjectURL(blob); a.download='device-edge-'+safe+'.csv'; a.click();
+}
+
+/* ---- glossary / refs ---- */
+function renderStatic(){
+  document.getElementById('glossList').innerHTML=GLOSSARY.map(([t,d])=>`<dt>${t}</dt><dd>${d}</dd>`).join('');
+  document.getElementById('refList').innerHTML=REFS.map(r=>`<li>${r}</li>`).join('');
+}
+
+/* =================================================================
+   CERTIFICATE OF COMPLETION
+   ================================================================= */
+let lastCertName='';
+function esc(s){ return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+function generateRunId(snap,n){
+  const d=new Date(), date=d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+  const seed=Math.round((snap.mci||0)*10000)+Math.round(snap.profitM||snap.profit||0)+n*7919;
+  const hash=(seed>>>0).toString(36).toUpperCase().padStart(4,'0').slice(-4);
+  return `DE-${date}-${hash}`;
+}
+async function downloadCertificate(runIndex){
+  const run = (runIndex!==undefined && RUNS[runIndex]) ? RUNS[runIndex] : RUNS[RUNS.length-1];
+  if(!run){ toast('No completed run to certify yet — finish a 5-year game first.'); return; }
+  // Use the student name captured on the Briefing screen for this run.
+  // (Each run stamps run.student at finalize time; fall back to current studentName if missing.)
+  const name = run.student || studentName;
+  if(!name){
+    toast('No name on file — set your name on the Briefing screen first.');
+    go('brief'); return;
+  }
+  try{ await document.fonts.ready; }catch(e){}
+  const W=1600, H=1100, canvas=document.createElement('canvas');
+  canvas.width=W; canvas.height=H;
+  drawCertificate(canvas.getContext('2d'), W, H, name, run);
+  const link=document.createElement('a');
+  link.download=`DeviceEdge_Certificate_${run.runId||('run'+run.n)}.png`;
+  link.href=canvas.toDataURL('image/png');
+  document.body.appendChild(link); link.click(); link.remove();
+  toast('Certificate downloaded.');
+}
+function drawCertificate(ctx, W, H, name, run){
+  const PAPER='#f3efe6', INK='#16201d', INK_SOFT='#3a4a45';
+  const TEAL='#0f7b6c', TEAL_D='#0a564c', AMBER='#c1761b';
+  const SLATE='#5b6a65', LINE='#d7d0c0', PANEL='#fbf9f3';
+  // background paper
+  ctx.fillStyle=PAPER; ctx.fillRect(0,0,W,H);
+  // subtle dot grid
+  ctx.fillStyle=LINE;
+  for(let x=0;x<W;x+=22) for(let y=0;y<H;y+=22){
+    ctx.beginPath(); ctx.arc(x,y,0.7,0,Math.PI*2); ctx.fill();
+  }
+  // double border
+  ctx.strokeStyle=TEAL; ctx.lineWidth=5; ctx.strokeRect(50,50,W-100,H-100);
+  ctx.strokeStyle=TEAL_D; ctx.lineWidth=1; ctx.strokeRect(70,70,W-140,H-140);
+  // 4 corner rings
+  function ring(cx,cy){
+    ctx.strokeStyle=TEAL; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.arc(cx,cy,28,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle=PAPER;
+    ctx.beginPath(); ctx.arc(cx+18,cy-6,6,0,Math.PI*2); ctx.fill();
+  }
+  ring(140,140); ring(W-140,140); ring(140,H-140); ring(W-140,H-140);
+  // amber accent dot
+  ctx.fillStyle=AMBER;
+  ctx.beginPath(); ctx.arc(W-95,103,9,0,Math.PI*2); ctx.fill();
+
+  ctx.textBaseline='alphabetic';
+  ctx.textAlign='center';
+
+  // eyebrow (letter-spaced via spaces)
+  ctx.fillStyle=TEAL_D;
+  ctx.font='bold 20px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText('C E R T I F I C A T E   O F   C O M P L E T I O N', W/2, 200);
+
+  // title
+  ctx.fillStyle=INK;
+  ctx.font='700 64px "Bricolage Grotesque", "Helvetica Neue", sans-serif';
+  ctx.fillText('Circular Economy Simulation', W/2, 285);
+
+  // subtitle
+  ctx.fillStyle=TEAL;
+  ctx.font='italic 36px "Bricolage Grotesque", "Georgia", serif';
+  ctx.fillText('Device Edge', W/2, 335);
+
+  // intro line
+  ctx.fillStyle=INK_SOFT;
+  ctx.font='22px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText('This is to certify that', W/2, 420);
+
+  // name (large)
+  ctx.fillStyle=INK;
+  ctx.font='700 68px "Bricolage Grotesque", "Helvetica Neue", sans-serif';
+  ctx.fillText(name, W/2, 510);
+  // underline
+  const nameW=ctx.measureText(name).width;
+  const ulw=Math.max(nameW+80, 420);
+  ctx.strokeStyle=TEAL; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(W/2-ulw/2,530); ctx.lineTo(W/2+ulw/2,530); ctx.stroke();
+
+  // achievement statement
+  ctx.fillStyle=INK_SOFT;
+  ctx.font='21px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText('has completed a five-year run of the simulation,', W/2, 585);
+  ctx.fillText('demonstrating engineering decision-making for product circularity.', W/2, 615);
+
+  // results panel
+  const panelX=200, panelY=680, panelW=W-400, panelH=200;
+  ctx.fillStyle=PANEL;
+  ctx.fillRect(panelX,panelY,panelW,panelH);
+  ctx.strokeStyle=LINE; ctx.lineWidth=1;
+  ctx.strokeRect(panelX,panelY,panelW,panelH);
+  ctx.fillStyle=TEAL;
+  ctx.fillRect(panelX,panelY,panelW,6);
+
+  const verdictLab={
+    success:'Both goals achieved',
+    profit_only:'Profitability maintained',
+    mci_only:'Circularity target reached',
+    neither:'Completed simulation'
+  }[run.verdict]||'Completed simulation';
+
+  const cols=[
+    {k:'MATERIAL CIRCULARITY (MCI)', v:run.mci.toFixed(3), big:true},
+    {k:'FINAL OPERATING PROFIT', v:fmtM(run.profit||run.profitM), big:true},
+    {k:'OUTCOME', v:verdictLab, big:false}
+  ];
+  cols.forEach((c,i)=>{
+    const cx=panelX+(i+0.5)*(panelW/3);
+    ctx.fillStyle=SLATE;
+    ctx.font='600 13px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+    ctx.fillText(c.k, cx, panelY+55);
+    ctx.fillStyle=TEAL_D;
+    ctx.font=`700 ${c.big?44:26}px "Bricolage Grotesque", "Helvetica Neue", sans-serif`;
+    ctx.fillText(c.v, cx, panelY+(c.big?122:115));
+  });
+
+  // sub-row stats
+  const subY=panelY+170;
+  ctx.fillStyle=INK_SOFT;
+  ctx.font='14px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  const sub=[
+    `${run.picks} initiatives selected`,
+    `R&D breakthrough: ${run.breakthrough?'✓ achieved':'— not pursued'}`,
+    `EU compliance: ${run.compliant!==false ? '✓ filed' : '✕ penalty'}`,
+    `CO₂e: ${Math.round(run.co2)} kt`
+  ];
+  sub.forEach((s,i)=>{
+    ctx.fillText(s, panelX+30+(i+0.5)*((panelW-60)/sub.length), subY);
+  });
+
+  // bottom row — Date / Run ID / Issued by
+  const dateStr=(run.date instanceof Date?run.date:new Date()).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  ctx.textAlign='left';
+  ctx.fillStyle=SLATE;
+  ctx.font='600 12px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText('DATE', 200, 950);
+  ctx.font='20px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillStyle=INK;
+  ctx.fillText(dateStr, 200, 985);
+
+  ctx.textAlign='center';
+  ctx.fillStyle=SLATE;
+  ctx.font='600 12px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText('RUN ID', W/2, 950);
+  ctx.font='600 20px "IBM Plex Mono", "Courier New", monospace';
+  ctx.fillStyle=INK;
+  ctx.fillText(run.runId||generateRunId({mci:run.mci, profitM:run.profit}, run.n), W/2, 985);
+
+  // RIGHT — signature block (DrKAI, Senior Product Manager)
+  ctx.textAlign='right';
+  const sigX = W - 195;
+  // Script "DrKAI" signature, slanted and large, sitting above the signature line
+  ctx.fillStyle = TEAL_D;
+  ctx.font = 'italic 700 42px "Bricolage Grotesque", "Brush Script MT", cursive';
+  ctx.fillText('DrKAI', sigX, 945);
+  // Signature line
+  ctx.strokeStyle = SLATE;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(sigX - 230, 960);
+  ctx.lineTo(sigX, 960);
+  ctx.stroke();
+  // Title (small caps)
+  ctx.fillStyle = SLATE;
+  ctx.font = '700 11px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText('S E N I O R   P R O D U C T   M A N A G E R', sigX, 982);
+  // Institution
+  ctx.fillStyle = INK_SOFT;
+  ctx.font = 'italic 12.5px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText('Engineering Product Design', sigX, 1004);
+}
+
+/* =================================================================
+   FINAL DASHBOARD → PNG  (single letter-page image, white background)
+   Lazy-loads only html2canvas from cdnjs.
+   ================================================================= */
+let _canvasLibPromise=null;
+function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    if(document.querySelector('script[data-src="'+src+'"]')){ resolve(); return; }
+    const s=document.createElement('script');
+    s.src=src; s.async=true; s.setAttribute('data-src', src);
+    s.onload=()=>resolve();
+    s.onerror=()=>reject(new Error('failed: '+src));
+    document.head.appendChild(s);
+  });
+}
+function ensureCanvasLib(){
+  if(_canvasLibPromise) return _canvasLibPromise;
+  _canvasLibPromise=loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  return _canvasLibPromise;
+}
+async function downloadDashboardPNG(){
+  if(!RUNS.length){ toast('Finish a five-year run first.'); return; }
+  const run=RUNS[RUNS.length-1];
+  const name=run.student||studentName||'student';
+  closeModal(); go('dash');
+  toast('Generating image — one moment…');
+  try{ await ensureCanvasLib(); }
+  catch(e){ toast('Couldn\'t load the image library. Check your connection and try again.'); return; }
+  // give layout, charts and any modal teardown time to fully settle
+  await new Promise(r=>setTimeout(r,800));
+  try{ await document.fonts.ready; }catch(e){}
+  // Force white backgrounds, then give the browser a frame to repaint
+  document.body.classList.add('exporting');
+  await new Promise(r=>setTimeout(r,80));
+
+  const target=document.getElementById('v-dash');
+  if(!target){ document.body.classList.remove('exporting'); toast('Dashboard not found.'); return; }
+  let dashCanvas;
+  try{
+    dashCanvas=await window.html2canvas(target, {
+      backgroundColor:'#ffffff',
+      scale:3,                       // higher source resolution → less haze after downscale
+      useCORS:true,
+      logging:false,
+      windowWidth: target.scrollWidth
+    });
+  }catch(err){
+    console.error('html2canvas failed:', err);
+    document.body.classList.remove('exporting');
+    toast('Could not render the dashboard. Try again.');
+    return;
+  }
+  document.body.classList.remove('exporting');
+
+  // Compose a single letter-portrait page at 200 DPI (1700 × 2200 px, white).
+  const PAGE_W=1700, PAGE_H=2200, MARGIN=70;
+  const HEADER_H=140, FOOTER_H=50;
+  const availW = PAGE_W - 2*MARGIN;
+  const availH = PAGE_H - MARGIN - HEADER_H - FOOTER_H - MARGIN;
+
+  // Multi-step downsample for clean text/edges (browser default scaling is soft/hazy).
+  const scale = Math.min(availW/dashCanvas.width, availH/dashCanvas.height);
+  const finalW = Math.round(dashCanvas.width*scale);
+  const finalH = Math.round(dashCanvas.height*scale);
+  let cur = dashCanvas;
+  // Halve repeatedly until close to target, then do final precise resize.
+  while(cur.width > finalW*2 || cur.height > finalH*2){
+    const half=document.createElement('canvas');
+    half.width  = Math.max(finalW, Math.floor(cur.width/2));
+    half.height = Math.max(finalH, Math.floor(cur.height/2));
+    const hctx=half.getContext('2d');
+    hctx.imageSmoothingEnabled=true; hctx.imageSmoothingQuality='high';
+    hctx.drawImage(cur, 0, 0, half.width, half.height);
+    cur=half;
+  }
+  const sized=document.createElement('canvas');
+  sized.width=finalW; sized.height=finalH;
+  const sctx=sized.getContext('2d');
+  sctx.imageSmoothingEnabled=true; sctx.imageSmoothingQuality='high';
+  sctx.drawImage(cur, 0, 0, finalW, finalH);
+
+  // Final page canvas
+  const out=document.createElement('canvas');
+  out.width=PAGE_W; out.height=PAGE_H;
+  const ctx=out.getContext('2d');
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  // white background
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,PAGE_W,PAGE_H);
+
+  // header
+  ctx.textBaseline='top'; ctx.textAlign='left';
+  ctx.fillStyle='#0a564c';
+  ctx.font='bold 38px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText('Device Edge — Final Dashboard', MARGIN, MARGIN);
+  ctx.fillStyle='#3a4a45';
+  ctx.font='22px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.fillText(`${name}  ·  Run ID ${run.runId||''}  ·  ${new Date().toLocaleDateString()}`, MARGIN, MARGIN+50);
+  // accent line
+  ctx.strokeStyle='#0f7b6c'; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(MARGIN, MARGIN+HEADER_H-10);
+  ctx.lineTo(PAGE_W-MARGIN, MARGIN+HEADER_H-10);
+  ctx.stroke();
+
+  // place pre-downsampled dashboard (no further scaling — pixel-perfect)
+  const drawX = Math.round((PAGE_W - finalW) / 2);
+  const drawY = MARGIN + HEADER_H;
+  ctx.drawImage(sized, drawX, drawY);
+
+  // footer
+  ctx.fillStyle='#8a938e';
+  ctx.font='italic 14px "Hanken Grotesk", "Helvetica Neue", sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('Circular Economy Simulation · Device Edge', PAGE_W/2, PAGE_H-MARGIN+10);
+
+  const safe=name.replace(/[^a-zA-Z0-9_-]/g,'_');
+  const link=document.createElement('a');
+  link.download=`DeviceEdge_Dashboard_${safe}_${run.runId||'run'+run.n}.png`;
+  link.href=out.toDataURL('image/png');
+  document.body.appendChild(link); link.click(); link.remove();
+  toast('Dashboard PNG downloaded.');
+}
+
+/* =================================================================
+   MODALS / NAV / TOAST
+   ================================================================= */
+let modalQueue=[];
+function queueModal(type,data){modalQueue.push({type,data});showNextModal();}
+function showNextModal(){
+  if(modalQueue.length===0)return;
+  const {type,data}=modalQueue[0];
+  const box=document.getElementById('modalBox');
+  if(type==='breakthrough'){
+    box.innerHTML=`<div class="ico">⚡</div><h2>Materials breakthrough!</h2>
+     <p>Your cumulative R&amp;D crossed $${PARAMS.rdBreakthroughM}M. Recovery technology jumps: recycling efficiency +${Math.round(PARAMS.breakthroughE*100)} points and your recycled-content ceiling rises. This compounds for the rest of the game.</p>
+     <div style="margin-top:16px"><button class="btn" onclick="closeModal()">Keep building →</button></div>`;
+  } else if(type==='verdict'){
+    const {last,verdict,vclass,complianceMsg,penalty}=data;
+    const msg={
+      success:`<b>You did it.</b> Helix Mobile reached an MCI of ${last.mci.toFixed(3)} <i>and</i> held operating profit at ${fmtM(last.profitM)}. You proved circularity and profitability can coexist — but only with new business models doing the heavy lifting. Now try beating it with a different strategy.`,
+      profit_only:`Profit is healthy (${fmtM(last.profitM)}) but MCI stalled at ${last.mci.toFixed(3)}, short of ${PARAMS.mciTarget}. The linear model is comfortable and that's exactly the trap. Push lifespan, collection and reuse harder next run — and start business-model shifts earlier so they mature.`,
+      mci_only:`Impressive circularity (MCI ${last.mci.toFixed(3)}) — but profit fell to ${fmtM(last.profitM)}, below the $${PARAMS.profitTargetM}M floor. Circularity that loses money isn't sustainable in the boardroom. Lean harder on revenue-positive loops (repair, trade-in, refurb, battery) rather than cost-only initiatives.`,
+      neither:`Tough year. MCI ${last.mci.toFixed(3)} and profit ${fmtM(last.profitM)} both missed. Re-read the dashboard: which picks actually moved the drivers? Concentrate on high-impact Design and Use/Recovery levers, fund capability so initiatives deliver, and avoid the low-impact traps.`
+    }[verdict];
+    const lastRun = RUNS[RUNS.length-1] || {};
+    box.innerHTML=`<div class="ico">${vclass==='win'?'🏆':vclass==='partial'?'◐':'↻'}</div>
+     <h2>Year 5 — Final Verdict</h2>
+     <div class="callout ${vclass}" style="margin-top:6px">${msg}</div>
+     ${complianceMsg?`<div class="callout note">⚖ ${complianceMsg}</div>`:'<div class="callout note">✓ EU compliance satisfied — verified repairability & LCA on file.</div>'}
+     <div class="cert-block">
+       <div class="cert-title">📜 Take your results with you</div>
+       <div class="cert-issued">Issued to <b>${esc(lastRun.student||studentName)}</b> · Run ID <span class="mono">${esc(lastRun.runId||'')}</span></div>
+       <div class="cert-row">
+         <button class="btn" onclick="downloadCertificate()">⤓ Certificate (PNG)</button>
+         <button class="btn ghost" onclick="downloadDashboardPNG()">⤓ Final Dashboard (PNG)</button>
+       </div>
+     </div>
+     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+       <button class="btn ghost" onclick="closeModal();go('dash')">Review final dashboard</button>
+       <button class="btn ghost" onclick="closeModal();newRun()">↻ Play again</button>
+     </div>`;
+  }
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('modalBg').classList.remove('show');
+  modalQueue.shift();
+  if(modalQueue.length) setTimeout(showNextModal,250);
+}
+
+function go(v){
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+v));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.v);});
+
+let toastT;
+function toast(msg){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;font-size:14px;z-index:200;box-shadow:0 10px 30px -10px rgba(0,0,0,.5);transition:.3s;opacity:0';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';t.style.bottom='24px';
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.style.opacity='0';t.style.bottom='10px';},2600);
+}
+
+/* react to facilitator + budget controls */
+document.getElementById('rdRange').addEventListener('input',e=>{S.rd=+e.target.value;renderDecide();});
+document.getElementById('trRange').addEventListener('input',e=>{S.tr=+e.target.value;renderDecide();});
+['facReveal','facEPR','facHard'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{
+  if(S.year===0 && S.history.length){ S.history=[]; pushBaseline(); } renderAll();
+}));
+
+/* boot */
+if(/[?&]facilitator(=|&|$)/.test(location.search) || location.hash==='#facilitator'){
+  document.body.classList.add('facilitator-mode');
+}
+S=freshState(); pushBaseline(); renderStatic(); renderAll();
+document.getElementById('mci0').textContent=S.history[0].mci.toFixed(2);
+</script>
+</body>
+</html>
